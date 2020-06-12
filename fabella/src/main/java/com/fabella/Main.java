@@ -41,7 +41,7 @@ public class Main {
 			List<String> listing_pages_table_Urls = Utils.getListingPagesURLs();
 			for(String listingPageUrl: listing_pages_table_Urls)
 			{
-				driver.navigate().to(listingPageUrl);
+				//driver.navigate().to(listingPageUrl);
 				
 				try {
 					Utils.insertProductLinksInDb(driver, listingPageUrl);
@@ -62,5 +62,6 @@ public class Main {
 				Utils.fetchProductDetails(driver, totalLinksInproduct_linkTable);
 			}
 		}
+		driver.close();
 	}
 }

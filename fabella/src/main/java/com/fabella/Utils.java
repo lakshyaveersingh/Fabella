@@ -8,8 +8,10 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
@@ -273,7 +275,7 @@ public class Utils {
 			Thread.sleep(2000);
 		}
 	}
-	
+	/*
 	public static void insertUrlInDb(List<String> urls) throws SQLException
 	{
 		Connection con = null;
@@ -300,7 +302,19 @@ public class Utils {
 		}
 		
 	}
-	
+	*/
+	public static Set<String> findDuplicates(List<String> listContainingDuplicates) {
+		 
+		final Set<String> setToReturn = new HashSet<String>();
+		final Set<String> set1 = new HashSet<String>();
+ 
+		for (String yourInt : listContainingDuplicates) {
+			if (!set1.add(yourInt)) {
+				setToReturn.add(yourInt);
+			}
+		}
+		return setToReturn;
+	}
 	public static List<String> getListingPagesURLs()
 	{
 		Connection con = null;
@@ -323,80 +337,108 @@ public class Utils {
 		 catch (Exception e) {
 			 e.printStackTrace();
 		 }
+		Set<String> duplicates = findDuplicates(sub_sub_category_links);
+		System.out.println(duplicates);
 		return sub_sub_category_links;
 	}
 	
 	public static int getNumberOfPagesInProductPage(WebDriver driver)
 	{
-		String xpathFor1Pages = "//*[@id='testId-searchResults-actionBar']/div/div[2]/div/ol/li";
-		System.out.println(driver.findElements(By.xpath(xpathFor1Pages)).size());
 		int pages = 0;
-		if(driver.findElements(By.xpath(xpathFor1Pages)).size()==1)
-		{
-			System.out.println("Single pagen app");
-			pages = 1;
+		try{
+			String xpathForSinglePageApplication = "//*[@id='testId-searchResults-actionBar']/div/div[2]/div/ol/li";
+			String xpathForMultiplePageApplication = "//div[1]/div/div/div[contains(@class, 'pagination')][1]/ol/li";
+			//System.out.println(driver.findElements(By.xpath(xpathFor1Pages)).size());
+			
+			if(driver.findElements(By.xpath(xpathForSinglePageApplication)).size()==1)
+			{
+				System.out.println("Single pagen app");
+				pages = 1;
+			}
+			else if(driver.findElements(By.xpath(xpathForMultiplePageApplication)).size()>1)
+			{
+				System.out.println("Multiple page application");
+				List<WebElement> pagesListWebElements = driver.findElements(By.xpath(xpathForMultiplePageApplication));
+				String pagesInString = pagesListWebElements.get(pagesListWebElements.size()-1).getText();
+				pages = Integer.parseInt(pagesInString);
+				System.out.println(pages);
+			}
+			
+			return pages;
+		}catch (Exception e) {
+			e.printStackTrace();
 		}
-		else if(driver.findElements(By.xpath(xpathFor1Pages)).size()>1)
-		{
-			System.out.println("Multiple page application");
-			List<WebElement> pagesListWebElements = driver.findElements(By.xpath("//div/div[1]/ol[@class='jsx-1738323148 jsx-2760063687']/li"));
-			String pagesInString = pagesListWebElements.get(pagesListWebElements.size()-1).getText();
-			pages = Integer.parseInt(pagesInString);
-			System.out.println(pages);
-		}
-		
 		return pages;
 	}
 	
 
 	public static void insertProductLinksInDb(WebDriver driver, String listingPageUrl) throws InterruptedException {
-		
-		String xPathForTotalNumberOfPages = "//div[1]/ol[@class='jsx-1738323148 jsx-2760063687']/li/button";
+		driver.navigate().to(listingPageUrl);
+		/*
+		//String xPathForTotalNumberOfPages = "//div[2]/div/div/div[@class='content-items-number-list']/div/div";
+		String xPathForTotalNumberOfPages = "//div[1]/div/div/div[contains(@class, 'pagination')][1]/ol/li"; //from the pagination
 		int pages=1;
 		try{
 		List<WebElement> listingWebElement = driver.findElements(By.xpath(xPathForTotalNumberOfPages));
-	
-		pages = Integer.parseInt(listingWebElement.get(listingWebElement.size()-1).getText().trim());
-		System.out.println(pages);
+
+		pages = Integer.parseInt(listingWebElement.get(listingWebElement.size()-1).getText().trim()); //total number of pages available in the url from the pagination
+		//System.out.println(pages);
 		}catch (Exception e) {
 			e.printStackTrace();
 		}
-		String textForNumberOfPages = driver.findElement(By.xpath("//*[@id='search_numResults']")).getText().trim();
+		*/
+		
+		
+		 
+		String textForNumberOfPages="";
+		/*
+		try{
+		textForNumberOfPages = driver.findElement(By.xpath("//div[@id='testId-searchResults-actionBar-bottom']/div/div/span/span")).getText().trim(); //total number of pages
+		}catch (Exception e) {
+			e.printStackTrace();
+		}
+		*/
 		//int totalProducts = Integer.parseInt(textForNumberOfPages.split("de")[1].split(" ")[1]);
 		//int productsOnCurrentPage = Integer.parseInt(textForNumberOfPages.split("de")[0].split("- ")[1].trim());
 		int productsOnCurrentPage = 0;
 		int products = 0;
-		//System.out.println(totalProducts+productsOnCurrentPage);
-		//int i=0;
 		int productsCount = 0;
-		List<String> urls = new  ArrayList<>();
+		List<String> urls;// = new  ArrayList<>();
 		List<String> queries = new  ArrayList<>();
 		String StringForBatchInsert[];
-		//while(/*productsOnCurrentPage != totalProducts || */ driver.findElements(By.xpath("//*[@id='testId-pagination-top-arrow-right']")).size()!=0)
-		for(int i=1; i<=getNumberOfPagesInProductPage(driver); i++)
+		int numberOfProductPages = getNumberOfPagesInProductPage(driver);
+		for(int i=1; i<=numberOfProductPages; i++)
 		{
-			//to insert url in db
-			//i=i+1;
-			driver.navigate().to(listingPageUrl+"?page="+i);
-			textForNumberOfPages = driver.findElement(By.xpath("//*[@id='search_numResults']")).getText().trim();
-			productsOnCurrentPage = Integer.parseInt(textForNumberOfPages.split("de")[0].split("- ")[1].trim());
-			Utils.waitDriver(driver, 2);
-			Thread.sleep(2000);
-			List<WebElement> urlsOfProductsWebElement = driver.findElements(By.xpath("/html/body/div[1]/div/div[2]/div[2]/section[2]/div/div[2]/div/div/a"));
-			List<String> urlOnCurrentPage = new ArrayList<>();
-			for(WebElement element: urlsOfProductsWebElement)
-			{
-				urlOnCurrentPage.add(element.getAttribute("href"));
+			urls = new  ArrayList<>();
+			try
+				{
+				driver.navigate().to(listingPageUrl+"?page="+i);
+				textForNumberOfPages = driver.findElement(By.xpath("//div[@id='testId-searchResults-actionBar-bottom']/div/div/span/span")).getText().trim();
+				productsOnCurrentPage = Integer.parseInt(textForNumberOfPages.split("de")[0].split("- ")[1].trim()); //error
+				Utils.waitDriver(driver, 2);
+				//Thread.sleep(2000);
+				List<WebElement> urlsOfProductsWebElement = driver.findElements(By.xpath("//div[@id='testId-searchResults-products']/div/div/a"));
+				List<String> urlOnCurrentPage = new ArrayList<>();
+				for(WebElement element: urlsOfProductsWebElement)
+				{
+					urlOnCurrentPage.add(element.getAttribute("href"));
+				}
+				urls.addAll(urlOnCurrentPage);
+				//System.out.println(urlOnCurrentPage);
 			}
-			urls.addAll(urlOnCurrentPage);
-			//System.out.println(urlOnCurrentPage);
-			
+			catch (Exception e) {
+				e.printStackTrace();
+			}
 			for(String url:urls)
 			{
-				queries.add("INSERT INTO "+CONSTANTS.DB_NAME+".product_links(product_link) VALUES('"+url+"')");
+				queries.add("INSERT INTO "+CONSTANTS.DB_NAME+".product_links(product_link, sub_sub_category_link) VALUES('"+url+"','"+listingPageUrl+"')");
+				
 			}
+			int a = queries.size();
+			System.out.println("queries till page "+i+"="+a);
 		}
-		productsCount=urls.size();
+		//Set<String> set = findDuplicates(queries);
+		productsCount=queries.size();
 	
 			
 		
@@ -418,8 +460,8 @@ public class Utils {
 					Connection connetion=DriverManager.getConnection(CONSTANTS.CONNECTION_URL, CONSTANTS.DB_USERNAME, CONSTANTS.DB_PASSWORD);
 					Statement statementForUpdate = connetion.createStatement();
 					String sql = "UPDATE "+CONSTANTS.DB_NAME+".listing_pages SET scanned="+1+
-							", no_of_pages = "+pages+""+
-							", count_automated = "+productsCount+""+
+							", no_of_pages = "+numberOfProductPages+""+
+							", count_automated = "+queries.size()+""+
 							", scanned = "+1+""+
 							" WHERE sub_sub_category_link='"+listingPageUrl+"'";
 					statementForUpdate.execute(sql);
@@ -607,13 +649,13 @@ public class Utils {
 			String product_information="NA";
 			String images = "NA";
 			
-			float rating;
-			int reviews_count;
-			int reviews_with_rate_5;
-			int reviews_with_rate_4;
-			int reviews_with_rate_3;
-			int reviews_with_rate_2;
-			int reviews_with_rate_1;
+			float rating=0;
+			int reviews_count=0;
+			int reviews_with_rate_5=0;
+			int reviews_with_rate_4=0;
+			int reviews_with_rate_3=0;
+			int reviews_with_rate_2=0;
+			int reviews_with_rate_1=0;
 			int scanned;
 			String updated_date;
 			String created_at;
@@ -762,17 +804,36 @@ public class Utils {
 				e.printStackTrace();
 			}
 			
-			rating = Float.parseFloat(driver.findElement(By.xpath("//span[@class='bv-rating']/span")).getText());
+			try{
+				rating = Float.parseFloat(driver.findElement(By.xpath("//span[@class='bv-rating']/span")).getText());
+			}catch (Exception e) {
+				System.out.println("Rating absent or it is an error");
+			}
+			try{
 			String reviewCountText = driver.findElement(By.xpath(reviews_countXpath)).getText().split("comentarios")[0].trim();
 			reviews_count = Integer.parseInt(reviewCountText);
-			Map<Integer, Integer> reviewCounts = getReviews(driver);
-			reviews_with_rate_1 = reviewCounts.get(1);
-			reviews_with_rate_2 = reviewCounts.get(2);
-			reviews_with_rate_3 = reviewCounts.get(3);
-			reviews_with_rate_4 = reviewCounts.get(4);
-			reviews_with_rate_5 = reviewCounts.get(5);
-			rating = reviews_with_rate_1+reviews_with_rate_2+reviews_with_rate_3+reviews_with_rate_4+reviews_with_rate_5;
+			}catch (Exception e) {
+				System.out.println("Review Count not available or it is an error");
+			}
 			
+			Map<Integer, Integer> reviewCounts = getReviews(driver);
+			try{
+				reviews_with_rate_1 = reviewCounts.get(1);
+				reviews_with_rate_2 = reviewCounts.get(2);
+				reviews_with_rate_3 = reviewCounts.get(3);
+				reviews_with_rate_4 = reviewCounts.get(4);
+				reviews_with_rate_5 = reviewCounts.get(5);
+				rating = reviews_with_rate_1+reviews_with_rate_2+reviews_with_rate_3+reviews_with_rate_4+reviews_with_rate_5;
+			}catch (Exception e) {
+				System.out.println("Exception in rating or rating is absent");
+				
+			}
+			try{
+				clickElement(driver, "//*[@id='acc-alert-close']");
+			}
+			catch (Exception e) {
+				System.out.println("Popup not found");
+			}
 			try{
 				images = getImagesURL(driver);
 			}catch (Exception e) {
@@ -781,6 +842,7 @@ public class Utils {
 			
 			try{
 				product_information = getProductInformation(driver);
+				product_information = product_information.replaceAll("'", "''");
 			}catch (Exception e) {
 				e.printStackTrace();
 			}
@@ -829,6 +891,7 @@ public class Utils {
 					"images='"+images+"', "+
 					"created_at='"+java.time.LocalDateTime.now()+"' "+
 					"WHERE product_link='"+product_link+"';";
+			System.out.println(sqlQuery);
 			
 			Connection connection = null;
 			try {
