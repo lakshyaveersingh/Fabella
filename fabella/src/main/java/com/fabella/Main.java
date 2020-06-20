@@ -19,7 +19,11 @@ public class Main {
 		
 		String url = "https://www.falabella.com.co/falabella-co/category/cat1660941/Celulares-y-Smartphones?page=";
 		driver.navigate().to(url);
-		Utils.clickElement(driver, "//*[@id='showfb-modal-info-estado-p']/div/a/div/img");
+		try{
+			Utils.clickElement(driver, "//*[@id='showfb-modal-info-estado-p']/div/a/div/img");
+		}catch (Exception e) {
+			e.printStackTrace();
+		}
 		Utils.waitDriver(driver, 1);
 		driver.navigate().to(url+1);
 		Utils.waitDriver(driver, 1);

@@ -72,7 +72,7 @@ public class Utils {
 		String url = hm.get("url");
 
 		driver.get(url);
-		sleepMethod(10000L);
+		sleepMicroSec(1000);
 
 		List<WebElement> productsList = driver.findElements(By.xpath(
 				".//div[contains(@class,\"search-results--products\")]//div[contains(@class,\"search-results\")]"));
@@ -231,10 +231,11 @@ public class Utils {
 		}
 	}
 
-	public void sleepMethod(Long time) {
+	public static void sleepMicroSec(int timeInMicroSec) {
 
+		String t = timeInMicroSec+"";
 		try {
-			Thread.sleep(time);
+			Thread.sleep(Long.parseLong(t));
 		} catch (InterruptedException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
@@ -374,112 +375,115 @@ public class Utils {
 
 	public static void insertProductLinksInDb(WebDriver driver, String listingPageUrl) throws InterruptedException {
 		driver.navigate().to(listingPageUrl);
-		/*
-		//String xPathForTotalNumberOfPages = "//div[2]/div/div/div[@class='content-items-number-list']/div/div";
-		String xPathForTotalNumberOfPages = "//div[1]/div/div/div[contains(@class, 'pagination')][1]/ol/li"; //from the pagination
-		int pages=1;
-		try{
-		List<WebElement> listingWebElement = driver.findElements(By.xpath(xPathForTotalNumberOfPages));
-
-		pages = Integer.parseInt(listingWebElement.get(listingWebElement.size()-1).getText().trim()); //total number of pages available in the url from the pagination
-		//System.out.println(pages);
-		}catch (Exception e) {
-			e.printStackTrace();
-		}
-		*/
 		
-		
+		//listingPageUrl = "https://www.falabella.com.co/falabella-co/category/cat50670/Audifonos";
+		driver.navigate().to(listingPageUrl);
 		 
 		String textForNumberOfPages="";
-		/*
-		try{
-		textForNumberOfPages = driver.findElement(By.xpath("//div[@id='testId-searchResults-actionBar-bottom']/div/div/span/span")).getText().trim(); //total number of pages
-		}catch (Exception e) {
-			e.printStackTrace();
-		}
-		*/
-		//int totalProducts = Integer.parseInt(textForNumberOfPages.split("de")[1].split(" ")[1]);
-		//int productsOnCurrentPage = Integer.parseInt(textForNumberOfPages.split("de")[0].split("- ")[1].trim());
+		
 		int productsOnCurrentPage = 0;
 		int products = 0;
 		int productsCount = 0;
 		List<String> urls;// = new  ArrayList<>();
 		List<String> queries = new  ArrayList<>();
-		String StringForBatchInsert[];
+		//String StringForBatchInsert[];
 		int numberOfProductPages = getNumberOfPagesInProductPage(driver);
-		for(int i=1; i<=numberOfProductPages; i++)
+		try
 		{
-			urls = new  ArrayList<>();
-			try
+			for(int i=1; i<=numberOfProductPages; i++)
+			{
+					urls = new  ArrayList<>();
+					driver.navigate().to(listingPageUrl+"?page="+i);
+					sleepMicroSec(400);
+					textForNumberOfPages = driver.findElement(By.xpath("//div[@id='testId-searchResults-actionBar-bottom']/div/div/span/span")).getText().trim();
+					//productsOnCurrentPage = Integer.parseInt(textForNumberOfPages.split("de")[0].split("- ")[1].trim());
+					sleepMicroSec(1000);
+					List<WebElement> urlsOfProductsWebElement = driver.findElements(By.xpath("//div[@id='testId-searchResults-products']/div"));//a"));
+					List<String> urlOnCurrentPage = new ArrayList<>();
+	
+					for(int j=1; j<=urlsOfProductsWebElement.size(); j++)
+					{
+						String xpathForCurrentDiv = "//div[@id='testId-searchResults-products']/div["+j+"]";
+						sleepMicroSec(400);
+						String xpathForCurrentDivColorsVariantsList = xpathForCurrentDiv + "/div/div/ul/li";
+						if(driver.findElements(By.xpath(xpathForCurrentDivColorsVariantsList)).size()>0)
+						{
+							List<WebElement> buttonsWebElements = driver.findElements(By.xpath(xpathForCurrentDivColorsVariantsList));
+							for(int n=1; n<=buttonsWebElements.size(); n++)
+							{
+							
+							
+								String buttonXpath = xpathForCurrentDivColorsVariantsList + "["+n+"]";
+								driver.findElement(By.xpath(buttonXpath)).click();
+								sleepMicroSec(300);
+								String xpathForCurrentDivTo_a_Tag = "//div[@id='testId-searchResults-products']/div["+j+"]/div/a";
+								String link = driver.findElement(By.xpath(xpathForCurrentDivTo_a_Tag)).getAttribute("href").toString().trim();
+								urlOnCurrentPage.add(link);
+							}
+						}
+						else
+						{
+							String xpath = xpathForCurrentDiv + "/div/a";
+							String link = driver.findElement(By.xpath(xpath)).getAttribute("href").trim();
+							urlOnCurrentPage.add(link);
+						}
+						
+					}
+					productsCount = productsCount+urlsOfProductsWebElement.size();
+					
+					urls.addAll(urlOnCurrentPage);
+					//System.out.println(urlOnCurrentPage);
+				
+				for(String url:urls)
 				{
-				driver.navigate().to(listingPageUrl+"?page="+i);
-				textForNumberOfPages = driver.findElement(By.xpath("//div[@id='testId-searchResults-actionBar-bottom']/div/div/span/span")).getText().trim();
-				productsOnCurrentPage = Integer.parseInt(textForNumberOfPages.split("de")[0].split("- ")[1].trim()); //error
-				Utils.waitDriver(driver, 2);
-				//Thread.sleep(2000);
-				List<WebElement> urlsOfProductsWebElement = driver.findElements(By.xpath("//div[@id='testId-searchResults-products']/div/div/a"));
-				List<String> urlOnCurrentPage = new ArrayList<>();
-				for(WebElement element: urlsOfProductsWebElement)
-				{
-					urlOnCurrentPage.add(element.getAttribute("href"));
+					queries.add("INSERT INTO "+CONSTANTS.DB_NAME+".product_links(product_link, sub_sub_category_link, created_at) VALUES('"+url+"','"+listingPageUrl+"', NOW())");
+					
 				}
-				urls.addAll(urlOnCurrentPage);
-				//System.out.println(urlOnCurrentPage);
+				int a = queries.size();
+				System.out.println("queries till page "+i+"="+a);
+			}
+			
+			Connection con = null;
+			try {
+				Class.forName(CONSTANTS.DRIVER_CLASS);
+				con=DriverManager.getConnection(CONSTANTS.CONNECTION_URL, CONSTANTS.DB_USERNAME, CONSTANTS.DB_PASSWORD);
+				Statement st;
+				st = con.createStatement();
+				for(String query:queries){
+					st.addBatch(query);
+				
+				}
+				int[] numberOfInsertions = st.executeBatch();
+				if(numberOfInsertions.length>0)
+				{
+					try{
+						Connection connetion=DriverManager.getConnection(CONSTANTS.CONNECTION_URL, CONSTANTS.DB_USERNAME, CONSTANTS.DB_PASSWORD);
+						Statement statementForUpdate = connetion.createStatement();
+						String sql = "UPDATE "+CONSTANTS.DB_NAME+".listing_pages SET scanned="+1+
+								", no_of_pages = "+numberOfProductPages+""+
+								", count_automated = "+productsCount+""+
+								", scanned = "+1+""+
+								" WHERE sub_sub_category_link='"+listingPageUrl+"'";
+						statementForUpdate.execute(sql);
+						statementForUpdate.close();
+						connetion.close();
+					}catch (Exception e) {
+						e.printStackTrace();
+					}
+				}
+				System.out.println(numberOfInsertions);
+				st.close();
+				con.close();
+	
 			}
 			catch (Exception e) {
 				e.printStackTrace();
 			}
-			for(String url:urls)
-			{
-				queries.add("INSERT INTO "+CONSTANTS.DB_NAME+".product_links(product_link, sub_sub_category_link) VALUES('"+url+"','"+listingPageUrl+"')");
-				
-			}
-			int a = queries.size();
-			System.out.println("queries till page "+i+"="+a);
 		}
-		//Set<String> set = findDuplicates(queries);
-		productsCount=queries.size();
-	
-			
-		
-		//StringForBatchInsert= urls.stream().toArray(String[] ::new);
-		Connection con = null;
-		try {
-			Class.forName(CONSTANTS.DRIVER_CLASS);
-			con=DriverManager.getConnection(CONSTANTS.CONNECTION_URL, CONSTANTS.DB_USERNAME, CONSTANTS.DB_PASSWORD);
-			Statement st;
-			st = con.createStatement();
-			for(String query:queries){
-				st.addBatch(query);
-			
-			}
-			int[] numberOfInsertions = st.executeBatch();
-			if(numberOfInsertions.length>0)
-			{
-				try{
-					Connection connetion=DriverManager.getConnection(CONSTANTS.CONNECTION_URL, CONSTANTS.DB_USERNAME, CONSTANTS.DB_PASSWORD);
-					Statement statementForUpdate = connetion.createStatement();
-					String sql = "UPDATE "+CONSTANTS.DB_NAME+".listing_pages SET scanned="+1+
-							", no_of_pages = "+numberOfProductPages+""+
-							", count_automated = "+queries.size()+""+
-							", scanned = "+1+""+
-							" WHERE sub_sub_category_link='"+listingPageUrl+"'";
-					statementForUpdate.execute(sql);
-					statementForUpdate.close();
-					connetion.close();
-				}catch (Exception e) {
-					e.printStackTrace();
-				}
-			}
-			System.out.println(numberOfInsertions);
-			st.close();
-			con.close();
-
-		}
-		catch (Exception e) {
-			e.printStackTrace();
-		}
-
+	catch(Exception e)
+	{
+		e.printStackTrace();
+	}
 
 	}
 
@@ -606,6 +610,9 @@ public class Utils {
 			
 			//System.out.println("Before removing HTML Tags: " + str);
 		    str = str.replaceAll("\\<.*?\\>", "\n");
+		    str = str.replaceAll("^[\n]* *[\n]*", "");
+		    str = str.replaceAll("('\\);)", "");
+		    str = str.replaceAll("\\@import url\\('", "");
 		    System.out.println("After removing HTML Tags: " + str);
 		    return str;
 	}
@@ -648,6 +655,7 @@ public class Utils {
 			String specifications="NA";
 			String product_information="NA";
 			String images = "NA";
+			String color = "NA";
 			
 			float rating=0;
 			int reviews_count=0;
@@ -671,13 +679,14 @@ public class Utils {
 			//String warrantyXpath ="//span[@class='jsx-2855074637 info']";
 			String additional_servicesXpath ="";
 			//String characteristics_featuresXpath ="";
-			String delivery_typeXpath ="";
+			String delivery_typeXpath ="//div[contains(@class,'availability')][1]/div[2]/div[2]/div/span";
 			String helplineXpath ="//div/span[@class='jsx-2350626903 telephone-link-number']";
 			String return_policyXpath ="//span[@class='jsx-2855074637 info']";
 			//String specificationsXpath ="";
 			//String product_informationXpath ="";
 			String ratingXpath = "//*[@id='ratings-summary']/div[2]";
 			String reviews_countXpath = "//a[@class='bv-rating-label bv-text-link bv-focusable']";
+			String colorXpath = "//div[contains(@class, 'product-specifications')]/div/div[contains(@class, 'color-swatch-container')]/span[2]";
 			
 			try{
 				clickElement(driver, "//button[@class='jsx-2462791491 swatchButton swatchButton-collapseButton']");
@@ -731,13 +740,7 @@ public class Utils {
 			}catch (Exception e) {
 				e.printStackTrace();
 			}
-/*
-			try{
-				warranty = getTextFromXpath(driver, warrantyXpath);
-			}catch (Exception e) {
-				e.printStackTrace();
-			}
-*/
+
 			try{
 				additional_services = getTextFromXpath(driver, additional_servicesXpath);
 			}catch (Exception e) {
@@ -766,7 +769,7 @@ public class Utils {
 			}
 
 			try{
-				delivery_type = getTextFromXpath(driver, delivery_typeXpath); //error
+				delivery_type = getTextFromXpath(driver, delivery_typeXpath);
 			}catch (Exception e) {
 				e.printStackTrace();
 			}
@@ -810,8 +813,8 @@ public class Utils {
 				System.out.println("Rating absent or it is an error");
 			}
 			try{
-			String reviewCountText = driver.findElement(By.xpath(reviews_countXpath)).getText().split("comentarios")[0].trim();
-			reviews_count = Integer.parseInt(reviewCountText);
+				String reviewCountText = driver.findElement(By.xpath(reviews_countXpath)).getText().split("comentarios")[0].trim();
+				reviews_count = Integer.parseInt(reviewCountText);
 			}catch (Exception e) {
 				System.out.println("Review Count not available or it is an error");
 			}
@@ -823,9 +826,9 @@ public class Utils {
 				reviews_with_rate_3 = reviewCounts.get(3);
 				reviews_with_rate_4 = reviewCounts.get(4);
 				reviews_with_rate_5 = reviewCounts.get(5);
-				rating = reviews_with_rate_1+reviews_with_rate_2+reviews_with_rate_3+reviews_with_rate_4+reviews_with_rate_5;
+				reviews_count = reviews_with_rate_1+reviews_with_rate_2+reviews_with_rate_3+reviews_with_rate_4+reviews_with_rate_5;
 			}catch (Exception e) {
-				System.out.println("Exception in rating or rating is absent");
+				System.out.println("Exception in review count or review count is absent");
 				
 			}
 			try{
@@ -846,22 +849,12 @@ public class Utils {
 			}catch (Exception e) {
 				e.printStackTrace();
 			}
-			/*
-			float rating;
-			int reviews_count;
-			int reviews_with_rate_5;
-			int reviews_with_rate_4;
-			int reviews_with_rate_3;
-			int reviews_with_rate_2;
-			int reviews_with_rate_1;
-			int scanned;
-			*/
-			/*
-			String sqlQuery = "UPDATE CONSTANTS.DB_NAME.product_links(product_link, brandName, product_name, variant_id, pod_badges, "
-					+ "primary_high_price, primary_price, tertiary_price, cmrpoint, warranty, additional_services, characteristics_features,"+
-					"delivery_type, helpline, return_policy, specifications, product_information, rating, reviews_count, reviews_with_rate_5"
-					+ "reviews_with_rate_4, reviews_with_rate_3, reviews_with_rate_2, reviews_with_rate_1, scanned, , ,) VALUES(";
-					*/
+			try{
+				color = driver.findElement(By.xpath(colorXpath)).getText().trim();
+			}catch (Exception e) {
+				e.printStackTrace();
+			}
+
 			String sqlQuery = "UPDATE "+CONSTANTS.DB_NAME+".product_links "+
 					" SET brand_name='"+brandName+"',"+
 					"product_name ='"+product_name+"',"+
@@ -889,6 +882,7 @@ public class Utils {
 					"scanned="+1+", "+
 					"updated_date='"+java.time.LocalDateTime.now()+"', "+
 					"images='"+images+"', "+
+					"color='"+color+"', "+
 					"created_at='"+java.time.LocalDateTime.now()+"' "+
 					"WHERE product_link='"+product_link+"';";
 			System.out.println(sqlQuery);
