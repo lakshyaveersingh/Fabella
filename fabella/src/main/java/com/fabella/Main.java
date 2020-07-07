@@ -9,7 +9,7 @@ import org.openqa.selenium.chrome.ChromeOptions;
 
 public class Main {
 
-	public static void main(String kj[]) throws InterruptedException, SQLException
+	public static void main(String jk[]) throws InterruptedException, SQLException
 	{
 		System.setProperty("webdriver.chrome.driver", "chromedriver.exe");
 		ChromeOptions chromeOptions = new ChromeOptions();
@@ -22,7 +22,7 @@ public class Main {
 		try{
 			Utils.clickElement(driver, "//*[@id='showfb-modal-info-estado-p']/div/a/div/img");
 		}catch (Exception e) {
-			e.printStackTrace();
+			//e.printStackTrace();
 		}
 		Utils.waitDriver(driver, 1);
 		driver.navigate().to(url+1);
@@ -31,7 +31,7 @@ public class Main {
 		try {
 			Utils.clickElement(driver, "//*[@id='acc-alert-accept']");
 		} catch (Exception e) {
-			e.printStackTrace();
+			//e.printStackTrace();
 		}
 		
 		//List<String> urls = Utils.getUrlListOfSmartPhones(driver, url);
@@ -39,10 +39,13 @@ public class Main {
 		
 		String insert_into_listing_pages_table = Utils.getValueByNodeName("config.xml", "insert_into_listing_pages_table"); 
 		String insertInto_product_links_table = Utils.getValueByNodeName("config.xml", "insert_into_product_links_table");
+		/*
+		int listing_link_id_start =  Integer.parseInt(jk[0]);
+		int listing_link_id_end = Integer.parseInt(jk[1]);
 		
 		if(insert_into_listing_pages_table.equalsIgnoreCase("true"))
 		{
-			List<String> listing_pages_table_Urls = Utils.getListingPagesURLs();
+			List<String> listing_pages_table_Urls = Utils.getListingPagesURLs(listing_link_id_start, listing_link_id_end);
 			for(String listingPageUrl: listing_pages_table_Urls)
 			{
 				//driver.navigate().to(listingPageUrl);
@@ -52,19 +55,26 @@ public class Main {
 				} catch (Exception e) {
 					e.printStackTrace();
 				}
-				
 			}
-			
 		}
+		*/
 		//----------Above was the process to insert the links of products and below is to insert a particular product detail---------
 		
 		if(insertInto_product_links_table.equalsIgnoreCase("true"))
 		{
 			int totalLinksInproduct_linkTable = Utils.getRowCountOfProductLinkToBeProcessed();
 			System.out.println(totalLinksInproduct_linkTable);
-			for(int i=0; i<totalLinksInproduct_linkTable;i++){
-				Utils.fetchProductDetails(driver, totalLinksInproduct_linkTable);
-			}
+			
+			int product_link_id_start = Integer.parseInt(jk[0]);
+			int product_link_id_end =  Integer.parseInt(jk[1]);
+			
+			/*
+			int product_link_id_start = 13;
+			int product_link_id_end = 16;
+			*/
+			//for(int i=0; i<totalLinksInproduct_linkTable;i++){
+				Utils.fetchProductDetails(driver, product_link_id_start, product_link_id_end);
+			//}
 		}
 		driver.close();
 	}
